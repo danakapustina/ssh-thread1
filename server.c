@@ -1,0 +1,145 @@
+#include<stdio.h>
+#include<string.h> //strlen
+#include<stdlib.h> //strlen
+#include<sys/socket.h>
+#include<arpa/inet.h> //inet_addr
+#include<unistd.h> //write
+#include<pthread.h> //for threading , link with lpthread
+#include <crypt.h>
+
+
+
+#define MAX_CONNECTIONS 3
+
+//the thread function
+void *connection_handler(void *);
+int work_con = 0; 
+
+int main(int argc , char *argv[])
+{
+    int socket_desc , client_sock , c , *new_sock;
+    struct sockaddr_in server , client;
+     
+    //Create socket
+    socket_desc = socket(AF_INET , SOCK_STREAM , 0);
+    if (socket_desc == -1)
+    {
+        printf("Could not create socket");
+    }
+    puts("Socket created");
+     
+    server.sin_family = AF_INET;
+    server.sin_addr.s_addr = INADDR_ANY;
+    server.sin_port = htons( 8889 );
+     
+    //Bind
+    if( bind(socket_desc,(struct sockaddr *)&server , sizeof(server)) < 0)
+    {
+        perror("bind failed. Error");
+        return 1;
+    }
+    puts("bind done");
+     
+    //Listen
+    listen(socket_desc , 3);
+
+    //Accept and incoming connection
+    puts("Waiting for incoming connections...");
+    c = sizeof(struct sockaddr_in);
+    while(client_sock = accept(socket_desc, (struct sockaddr *)&client, (socklen_t*)&c)   )
+    {
+
+        if (work_con < MAX_CONNECTIONS)
+        {
+            puts("Connection accepted");
+            work_con++;
+            pthread_t sniffer_thread;
+            new_sock = malloc(1);
+            *new_sock = client_sock;
+             
+            if(pthread_create( &sniffer_thread , NULL , connection_handler , (void*) new_sock) < 0)
+            {
+                perror("Could not create thread");
+                return 1;
+            }
+             
+            puts("Handler assigned");
+        }
+        else puts("Too mach connectinons");
+    }
+     
+    if (client_sock < 0)
+    {
+        perror("Accept failed");
+        return 1;
+    }
+     
+    return 0;
+}
+
+void *connection_handler(void *socket_desc)
+{
+    //Get the socket descriptor
+    int sock = *(int*)socket_desc;
+    int read_size;
+    char *message , client_message[2000];
+
+
+///////////////////////////////////////////////////////////
+
+  	    int size_m;
+            char login[2048], pass[2048], ilogin[50], ipass[100];
+            size_m = recv(sock, login, 2048, 0);
+            login[size_m] = '\0';
+            size_m = recv(sock, pass, 2048, 0);
+            pass[size_m] = '\0';
+            int flag = 1;
+	 
+
+	    FILE *fp = fopen("users.txt","r");
+
+
+             while(!feof(fp))
+            {	
+                fscanf(fp, "%s%s", ilogin, ipass);         
+	        if((strcmp(ipass, pass) == 0) && (strcmp(ilogin, login) == 0))
+	        {	
+                    flag = 100;
+	        }
+            }
+            fclose(fp);
+		
+
+	if(flag != 100)
+            {
+               
+                puts(" client disconnected");
+                
+            }
+            else
+            {	 write(sock , "agranted" , 8);
+		 puts(" client connected");
+             }
+
+
+    while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 )
+    {
+        //Send the message back to client
+        write(sock , client_message , strlen(client_message));
+    }
+     
+    if(read_size == 0)
+    {
+        puts("Client disconnected");
+        fflush(stdout);
+    }
+    else if(read_size == -1)
+    {
+        perror("recv failed");
+    }
+         
+    //Free the socket pointer
+    free(socket_desc);
+    work_con--;
+    return 0;
+}
