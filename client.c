@@ -33,27 +33,41 @@ int main(int argc , char *argv[])
      
     puts("Connected\n");
     
-    char login[2000], pass[2000];
+    char login[2000], pass[2000];    
 
-    printf("Login: ");
-    scanf("%s",login);
-
-    send(sock, login, strlen(login), 0);
-
-    printf("Password: ");
-    scanf("%s",pass);
-	
-    send(sock, pass, strlen(pass), 0);
-
-    int size_m = recv(sock,server_reply,2000,0);
-    server_reply[size_m] = '\0';
-    if(strstr(server_reply, "adenied"))
+    while(1)
     {
-         printf("Incorrect login/password!!!\n");
-    }
-    else
-    {
-	printf("Correct login/password.\n");
+
+	    printf("Login: ");
+	    scanf("%s",login);
+
+	    send(sock, login, strlen(login), 0);
+
+	    printf("Password: ");
+	    scanf("%s",pass);
+		
+	    send(sock, pass, strlen(pass), 0);
+        server_reply[0] = '\0';
+	    int size_m = recv(sock,server_reply,2000,0);
+	    server_reply[size_m] = '\0';
+	    if(strstr(server_reply, "again"))
+	    {
+	    	printf("Incorrect login/password!!!\n");	         
+            printf("Try again\n");
+            continue;	         
+	    }
+	    if(strstr(server_reply, "denied"))
+	    {
+	         printf("Incorrect login/password!!!\n");
+	         printf("Connection closing...\n");
+	         break;
+	                  
+	    }
+	    else if(strstr(server_reply, "granted"))
+	    {
+		    printf("Correct login/password.\n");
+		    break;
+	    }
     }
     
     while(1)

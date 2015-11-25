@@ -14,7 +14,8 @@
 //the thread function
 void *connection_handler(void *);
 //void *execute_command(const char *command);
-int work_con = 0; 
+int work_con = 0;
+int op = 1; 
 
 int main(int argc , char *argv[])
 {
@@ -28,6 +29,8 @@ int main(int argc , char *argv[])
         printf("Could not create socket");
     }
     puts("Socket created");
+
+    setsockopt(socket_desc, SOL_SOCKET, SO_REUSEADDR, &op, sizeof(int));
      
     server.sin_family = AF_INET;
     server.sin_addr.s_addr = INADDR_ANY;
@@ -112,46 +115,65 @@ void *connection_handler(void *socket_desc)
 
 ///////////////////////////////////////////////////////////
 
-  	    int size_m;
-            char login[2048], pass[2048], ilogin[50], ipass[100];
-            size_m = recv(sock, login, 2048, 0);
-            login[size_m] = '\0';
-            size_m = recv(sock, pass, 2048, 0);
-            pass[size_m] = '\0';
-            int flag = 1;
-	 
+    int size_m;
+    char login[2049], pass[2049], ilogin[50], ipass[100];            
+    int flag = 1;
+    int attempts = 2;
 
-	    FILE *fp = fopen("users.txt","r");
+    FILE *fp = fopen("users.txt","r");
 
+    while(1)
+    {
 
-             while(!feof(fp))
+        size_m = recv(sock, login, 2048, 0);
+        login[size_m] = '\0';
+        size_m = recv(sock, pass, 2048, 0);
+        pass[size_m] = '\0';
+
+        attempts -= 1;
+
+        while(!feof(fp))
+        {	
+            fscanf(fp, "%s%s", ilogin, ipass);         
+            if ((strcmp(ipass, pass) == 0) && (strcmp(ilogin, login) == 0))
             {	
-                fscanf(fp, "%s%s", ilogin, ipass);         
-	        if((strcmp(ipass, pass) == 0) && (strcmp(ilogin, login) == 0))
-	        {	
-                    flag = 100;
-	        }
+                flag = 100;
             }
-            fclose(fp);
-		
+        }
 
-	if(flag != 100)
-            {
-               
-                puts(" client disconnected");
-                
+    	if(flag != 100)
+        {            
+            if(attempts != 0)
+            {      
+                write(sock, "Try again\n", 10);          
+                continue;
             }
             else
-            {	 write(sock , "agranted" , 8);
-		 puts(" client connected");
-             }
+            {
+                write(sock, "Access denied\n", 14);                
+                fclose(fp);
+                close(sock);
+                puts("client disconnected");
+                return NULL;
+            }            
+            
+        }
+        else
+        {	 
+            write(sock , "Access granted\n" , 15);
+	        puts("client connected");
+            break;
+        }
 
+    }
+
+    fclose(fp);
 
     while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 )
     {
         //Send the message back to client
-       // write(sock , client_message , strlen(client_message));
-	execute_command(client_message);
+        // write(sock , client_message , strlen(client_message));
+	    execute_command(client_message);
     }
  
      
@@ -168,5 +190,5 @@ void *connection_handler(void *socket_desc)
     //Free the socket pointer
     free(socket_desc);
     work_con--;
-    return 0;
+    return NULL;
 }
