@@ -81,26 +81,25 @@ int main(int argc , char *argv[])
     return 0;
 }
 
-void execute_command(const char *command)
+void execute_command(const char *command, int sock)
 {
-  FILE *fp;
-  char output[1035];
+    FILE *fp;
+    char output[1035];    
 
-  /* Open the command for reading. */
-  fp = popen(command, "r");
-  if (fp == NULL) {
-    printf("Failed to run command\n" );
-    exit(1);
-  }
-
-  /* Read the output a line at a time - output it. */
-  while (fgets(output, sizeof(output)-1, fp) != NULL) {
-    printf("%s", output);
-   
-  }
-
-  /* close */
-  pclose(fp);
+    /* Open the command for reading. */
+    fp = popen(command, "r");
+    if (fp == NULL) {
+        printf("Failed to run command\n" );
+        exit(1);
+    }
+    
+    /* Read the output a line at a time - output it. */
+    while (fgets(output, sizeof(output), fp) != NULL) {        
+        write(sock, output, strlen(output));              
+    }
+    
+    /* close */
+    pclose(fp);
   
 }
 
@@ -169,11 +168,14 @@ void *connection_handler(void *socket_desc)
 
     fclose(fp);
 
+    
+
     while( (read_size = recv(sock , client_message , 2000 , 0)) > 0 )
     {
         //Send the message back to client
         // write(sock , client_message , strlen(client_message));
-	    execute_command(client_message);
+	    execute_command(client_message, sock);
+        //write(sock, output, strlen(output));
     }
  
      

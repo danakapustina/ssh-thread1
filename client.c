@@ -60,7 +60,8 @@ int main(int argc , char *argv[])
 	    {
 	         printf("Incorrect login/password!!!\n");
 	         printf("Connection closing...\n");
-	         break;
+	         close(sock);
+             return 0;
 	                  
 	    }
 	    else if(strstr(server_reply, "granted"))
@@ -71,26 +72,29 @@ int main(int argc , char *argv[])
     }
     
     while(1)
-    {
+    {        
         printf("Enter message : ");
-        scanf("%s" , message);
+        scanf("%s" , message);        
          
         //Send some data
-        if( send(sock , message , strlen(message) , 0) < 0)
+        if( send(sock, message, strlen(message)+1, 0) < 0)
         {
             puts("Send failed");
             return 1;
         }
-         
+        int received;
+
         //Receive a reply from the server
-        if( recv(sock , server_reply , 2000 , 0) < 0)
+        if( (received=recv(sock , server_reply , 2000 , 0)) < 0)
         {
             puts("recv failed");
             break;
         }
-         
-        puts("Server reply :");
+        
+        server_reply[received] = '\0';
+        puts("Server reply :");       
         puts(server_reply);
+
     }
      
     close(sock);
